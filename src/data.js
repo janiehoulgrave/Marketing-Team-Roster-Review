@@ -28,6 +28,9 @@ if (!DEMO) {
     watchAll: (cb, err) => onSnapshot(collection(db, 'responses'), s => cb(s.docs.map(toResp)), err),
     saveResponse: (user, staff, teamId, answers) => setDoc(doc(db, 'responses', docId(user.uid, teamId)),
       { ...answers, uid: user.uid, email: user.email, staff, teamId, updated: serverTimestamp() }),
+    // The shared re-org draft: one document that all admins read and write.
+    watchReorg: (cb, err) => onSnapshot(doc(db, 'reorg', 'draft'), s => cb(s.exists() ? { ...s.data(), json: undefined, ...(s.data().json ? JSON.parse(s.data().json) : {}), updatedAt: s.data().updatedAt?.toMillis ? s.data().updatedAt.toMillis() : s.data().updatedAt } : null), err),
+    saveReorg: (draft, user, name) => setDoc(doc(db, 'reorg', 'draft'), { json: JSON.stringify(draft), updatedBy: name || user.email, updatedEmail: user.email, updatedAt: serverTimestamp() }),
   };
 } else {
   const ls = {
@@ -46,6 +49,8 @@ if (!DEMO) {
     async saveRoster(r, user) { ls.set('demo-roster', { teams: r.teams, unassigned: r.unassigned || [], fileName: r.fileName, importedAt: Date.now(), importedBy: user.email }); },
     watchMine(user, cb) { const f = () => cb(all().filter(r => r.uid === user.uid)); subs.add(f); f(); return () => subs.delete(f); },
     watchAll(cb) { const f = () => cb(all()); subs.add(f); f(); return () => subs.delete(f); },
+    watchReorg(cb) { const f = () => cb(ls.get('demo-reorg', null)); subs.add(f); f(); return () => subs.delete(f); },
+    async saveReorg(draft, user, name) { ls.set('demo-reorg', { ...draft, updatedBy: name || user.email, updatedEmail: user.email, updatedAt: Date.now() }); emit(); },
     async saveResponse(user, staff, teamId, answers) {
       const m = ls.get('demo-responses', {});
       m[docId(user.uid, teamId)] = { ...answers, uid: user.uid, email: user.email, staff, teamId, updated: Date.now() };

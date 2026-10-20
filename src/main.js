@@ -2,7 +2,7 @@ import './style.css';
 import { data, access, DEMO, DEMO_PEOPLE } from './data.js';
 import { STAFF, ADMINS } from './config.js';
 import { renderMine, wireMine, resetMine } from './mine.js';
-import { renderAdmin, resetAdmin } from './admin.js';
+import { renderAdmin, resetAdmin, adminTab } from './admin.js';
 import { esc } from './questions.js';
 
 const app = document.getElementById('app');
@@ -17,6 +17,7 @@ export function setRoster(teams, meta, unassigned) { S.roster = teams; S.rosterM
 
 export function render() {
   document.body.classList.toggle('wide', S.tab === 'admin');
+  document.body.classList.toggle('xwide', S.tab === 'admin' && adminTab() === 'reorg');
   if (!S.user) return renderSignIn();
   if (!S.acc.staff && !S.acc.admin) return renderNoAccess();
   const tabs = S.acc.staff && S.acc.admin
@@ -81,7 +82,7 @@ function renderNoAccess() {
 data.onUser(async user => {
   unsubs.forEach(u => u()); unsubs = [];
   resetMine(); resetAdmin();
-  Object.assign(S, { user, acc: access(user), roster: null, mine: {}, mineReady: false, all: [], allReady: false, error: null });
+  Object.assign(S, { user, acc: access(user), roster: null, mine: {}, mineReady: false, all: [], allReady: false, reorg: null, reorgReady: false, error: null });
   if (!user) return render();
   if (!S.acc.staff && !S.acc.admin) return render();
   S.tab = S.acc.staff ? (location.hash === '#admin' && S.acc.admin ? 'admin' : 'mine') : 'admin';
@@ -100,7 +101,13 @@ data.onUser(async user => {
   }, fail));
   if (S.acc.admin) unsubs.push(data.watchAll(docs => {
     S.all = docs; S.allReady = true;
-    if (S.tab === 'admin') render();
+    if (S.tab !== 'admin') return;
+    // On the Re-org tab, refresh the board in place so an open detail window isn't closed.
+    if (adminTab() === 'reorg') import('./reorg.js').then(m => m.reorgRefresh()); else render();
   }, fail));
+  if (S.acc.admin) unsubs.push(data.watchReorg(d => {
+    S.reorg = d; const first = !S.reorgReady; S.reorgReady = true;
+    import('./reorg.js').then(m => { m.reorgRemote(d); if (first && S.tab === 'admin' && adminTab() === 'reorg') render(); });
+  }, e => { S.error = 'The re-org draft could not be loaded. ' + e.message; render(); }));
   render();
 });

@@ -7,6 +7,7 @@ import { Q, OFF, REACH_SHORT, isOff, status, STATUS_LABEL, esc, tierCls, safeUrl
 
 let view = { tab: 'staff', person: null, open: null };
 let upload = null; // parsed file waiting for confirmation
+export const adminTab = () => view.tab;
 export function resetAdmin() { view = { tab: 'staff', person: null, open: null }; upload = null; resetUnassigned(); }
 const NAMES = Object.keys(STAFF);
 const isPerson = n => !!STAFF[n];
@@ -71,14 +72,15 @@ export function renderAdmin(main) {
       <div class="stat"><span class="eyebrow">Going around Zendesk</span><span class="v">${offTeams}</span><span class="d">Teams using email, text, calls or walk-ups</span></div>
     </section>
     <nav class="tabs" role="tablist">
-      ${[['staff', 'Staff progress'], ['flags', 'Flagged teams'], ['unassigned', 'Not on a roster'], ['reorg', 'Re-org'], ['roster', 'Roster data']].map(([k, l]) => `<button role="tab" aria-selected="${view.tab === k}" data-tab="${k}">${l}${k === 'reorg' ? '<span class="soon">Next</span>' : ''}</button>`).join('')}
+      ${[['staff', 'Staff progress'], ['flags', 'Flagged teams'], ['unassigned', 'Not on a roster'], ['reorg', 'Re-org'], ['roster', 'Roster data']].map(([k, l]) => `<button role="tab" aria-selected="${view.tab === k}" data-tab="${k}">${l}</button>`).join('')}
     </nav>
     <div id="tab"></div>`;
   main.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(main, { tab: b.dataset.tab }));
   const el = main.querySelector('#tab');
   if (view.tab === 'staff') el.innerHTML = staffTable(M);
   if (view.tab === 'flags') el.innerHTML = flagsTab(M);
-  if (view.tab === 'reorg') el.innerHTML = `<div class="soonbox"><span class="eyebrow">Coming next</span><h3>Re-org exercise</h3><p>Once reviews are in, this is where you'll move teams between staff, watch each person's workload and tier mix update as you go, and save a proposed roster to compare against today's.</p></div>`;
+  document.body.classList.toggle('xwide', view.tab === 'reorg');
+  if (view.tab === 'reorg') { el.innerHTML = '<div class="empty">Loading the re-org…</div>'; import('./reorg.js').then(m => { if (view.tab === 'reorg' && el.isConnected) m.renderReorg(el); }); return; }
   if (view.tab === 'roster') return rosterTab(main, el);
   if (view.tab === 'unassigned') return unassignedTab(el);
   el.querySelectorAll('[data-person]').forEach(b => {

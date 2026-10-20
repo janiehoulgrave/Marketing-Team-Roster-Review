@@ -46,6 +46,11 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // The shared re-org draft: admins only.
+    match /reorg/{doc} {
+      allow read, write: if isAdmin();
+    }
+
     match /{everythingElse=**} { allow read, write: if false; }
   }
 }

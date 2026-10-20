@@ -19,3 +19,21 @@ export const ADMINS = {
   'Ariel Mantilla': 'ariel.mantilla@compass.com',
   'Sarah Tareen': 'sarah.tareen@compass.com',
 };
+
+// ROLES AND BENCHMARKS FOR THE RE-ORG
+// Benchmarks are licensed agents per person (principals plus agents).
+// The ranges are starting points; admins can change them on the Re-org tab and the change is shared.
+export const ROLES = [
+  { id: 'mc', name: 'Marketing Coordinator', min: 40, max: 55 },
+  { id: 'ma', name: 'Marketing Advisor', min: 60, max: 75 },
+  { id: 'sma', name: 'Senior Marketing Advisor', min: 75, max: 95 },
+  { id: 'sml', name: 'Strategic Marketing Lead', min: 60, max: 80 },
+  { id: 'amm', name: 'Associate Marketing Manager', min: 30, max: 50 },
+];
+export const STAFF_ROLE = {
+  'Alex Asmar': 'sml', 'Janie Houlgrave': 'sml',
+  'Jessica Tan': 'sma', 'Toria Hester': 'sma', 'Kathleen Walsh': 'sma',
+  'Lindsey McNerney': 'ma', 'Natalie Robinson': 'ma',
+  'Alexis Coballes': 'mc', 'Skylar Herrle': 'mc',
+  'Ariel Mantilla': 'amm',
+};

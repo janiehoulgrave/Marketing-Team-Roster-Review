@@ -62,4 +62,13 @@ The emails in **src/config.js** and **firestore.rules** were filled in using the
 Edit files in GitHub (or upload replacements). Vercel redeploys on its own within a minute or two.
 
 - Question wording and options: **src/questions.js**
+- Roles and starting benchmark ranges for the re-org: **src/config.js** (ROLES and STAFF_ROLE)
 - Who has access: **src/config.js** and **firestore.rules** (both)
+
+## Re-org tab
+
+Admin > Re-org is a shared draft that only you, Ariel and Sarah can see. Every move, second MA change and benchmark edit saves for all three of you within a second or two. Nothing in the directory changes; when you're happy with the draft, use Copy change list and update the directory yourselves.
+
+If two people change the draft at the exact same moment, the last save wins, so talk before you both rearrange at once.
+
+The re-org needs the updated **firestore.rules** published in Firebase (it adds the admin-only `reorg` section).
