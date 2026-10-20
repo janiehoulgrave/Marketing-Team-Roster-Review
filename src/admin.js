@@ -7,7 +7,7 @@ import { Q, OFF, REACH_SHORT, isOff, status, STATUS_LABEL, esc, tierCls, safeUrl
 
 let view = { tab: 'staff', person: null, open: null };
 let upload = null; // parsed file waiting for confirmation
-export function resetAdmin() { view = { tab: 'staff', person: null, open: null }; upload = null; }
+export function resetAdmin() { view = { tab: 'staff', person: null, open: null }; upload = null; resetUnassigned(); }
 const NAMES = Object.keys(STAFF);
 const isPerson = n => !!STAFF[n];
 
@@ -71,7 +71,7 @@ export function renderAdmin(main) {
       <div class="stat"><span class="eyebrow">Going around Zendesk</span><span class="v">${offTeams}</span><span class="d">Teams using email, text, calls or walk-ups</span></div>
     </section>
     <nav class="tabs" role="tablist">
-      ${[['staff', 'Staff progress'], ['flags', 'Flagged teams'], ['reorg', 'Re-org'], ['roster', 'Roster data']].map(([k, l]) => `<button role="tab" aria-selected="${view.tab === k}" data-tab="${k}">${l}${k === 'reorg' ? '<span class="soon">Next</span>' : ''}</button>`).join('')}
+      ${[['staff', 'Staff progress'], ['flags', 'Flagged teams'], ['unassigned', 'Not on a roster'], ['reorg', 'Re-org'], ['roster', 'Roster data']].map(([k, l]) => `<button role="tab" aria-selected="${view.tab === k}" data-tab="${k}">${l}${k === 'reorg' ? '<span class="soon">Next</span>' : ''}</button>`).join('')}
     </nav>
     <div id="tab"></div>`;
   main.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(main, { tab: b.dataset.tab }));
@@ -80,6 +80,7 @@ export function renderAdmin(main) {
   if (view.tab === 'flags') el.innerHTML = flagsTab(M);
   if (view.tab === 'reorg') el.innerHTML = `<div class="soonbox"><span class="eyebrow">Coming next</span><h3>Re-org exercise</h3><p>Once reviews are in, this is where you'll move teams between staff, watch each person's workload and tier mix update as you go, and save a proposed roster to compare against today's.</p></div>`;
   if (view.tab === 'roster') return rosterTab(main, el);
+  if (view.tab === 'unassigned') return unassignedTab(el);
   el.querySelectorAll('[data-person]').forEach(b => {
     const open = () => go(main, { person: b.dataset.person, open: b.dataset.team || null });
     b.onclick = open; b.onkeydown = e => { if (e.key === 'Enter') open(); };
@@ -153,6 +154,7 @@ function dlist(r) {
     ${row('reach', (r.reach || []).map(k => esc(REACH_SHORT[k]) + (OFF.includes(k) ? ' <span class="flag w" style="font-size:10px;padding:0 5px">off-process</span>' : '')).join(', '))}
     ${row('plan', r.plan != null ? Q.plan.stops[r.plan] : '')}
     ${row('channels', esc((r.channels || []).join(', ')))}${row('design', esc(r.design))}${row('brand', r.brand ? 'Yes' : r.brand === false ? 'No' : '')}
+    ${row('ops', r.ops ? esc(r.ops) + (r.ops === 'Yes' && r.opsName ? ': ' + esc(r.opsName) : '') : '')}${row('specialty', esc(r.specialty).replace(/\n/g, '<br>'))}
     ${row('projects', esc(r.projects).replace(/\n/g, '<br>'))}
     ${row('links', (r.links || []).filter(Boolean).map(l => safeUrl(l) ? `<a href="${esc(l)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l)).join('<br>'))}
     ${row('note', esc(r.note).replace(/\n/g, '<br>'))}</dl>
@@ -191,17 +193,18 @@ function rosterTab(main, el) {
     if (upload.error) { prev.innerHTML = `<p class="err">${esc(upload.error)}</p>`; return; }
     const by = Object.fromEntries(NAMES.map(n => [n, rosterFor(upload.teams, n).length]));
     const skipped = Object.entries(upload.otherMAs).sort((a, b) => b[1] - a[1]);
+    const unPeople = (upload.unassigned || []).reduce((a, t) => a + t.members.length, 0);
     const removed = S.roster.filter(t => !upload.teams.some(u => u.id === t.id)).length;
     prev.innerHTML = `<div class="previewbox"><p><b>${upload.teams.length} teams</b> found in ${esc(upload.fileName)}.${removed ? ` ${removed} teams in the current roster aren't in this file.` : ''}</p>
       <div class="counts">${NAMES.map(n => `<span><b class="num">${by[n]}</b> ${esc(n)}</span>`).join('')}</div>
-      ${skipped.length ? `<p class="small dash">Not included (team MA isn't on staff): ${skipped.map(([k, v]) => `${esc(k)} (${v})`).join(', ')}</p>` : ''}
+      ${skipped.length ? `<p class="small dash">Not on a staff roster, shown under Admin > Not on a roster: ${unPeople} people on ${upload.unassigned.length} teams. ${skipped.map(([k, v]) => `${esc(k)} (${v})`).join(', ')}</p>` : ''}
       <div class="row"><button class="btn primary" id="rsave">Replace roster with this file</button><button class="btn" id="rcancel">Cancel</button></div></div>`;
     prev.querySelector('#rcancel').onclick = () => { upload = null; el.querySelector('#rfile').value = ''; showPreview(); };
     prev.querySelector('#rsave').onclick = async e => {
       e.target.disabled = true; e.target.textContent = 'Saving…';
       try {
         await data.saveRoster(upload, S.user);
-        setRoster(upload.teams, { fileName: upload.fileName, importedAt: Date.now(), importedBy: S.user.email });
+        setRoster(upload.teams, { fileName: upload.fileName, importedAt: Date.now(), importedBy: S.user.email }, upload.unassigned);
         upload = null; render();
       } catch (err) { e.target.disabled = false; e.target.textContent = 'Replace roster with this file'; prev.insertAdjacentHTML('beforeend', `<p class="err">Couldn't save the roster. ${esc(err.message)}</p>`); }
     };
@@ -216,4 +219,54 @@ function rosterTab(main, el) {
     showPreview();
   };
   showPreview();
+}
+
+// Teams whose MA isn't on staff (AEMs, shared service, no MA, Referral Directors, no team).
+let un = { q: '', tier: 'all', open: new Set(), groups: new Set() };
+export function resetUnassigned() { un = { q: '', tier: 'all', open: new Set(), groups: new Set() }; }
+function unassignedTab(el) {
+  if (!S.unassigned) {
+    el.innerHTML = `<div class="soonbox"><h3>Upload the roster again</h3><p>The current roster was uploaded before this view existed. Upload the DMV Agent Directory again under Roster data and these teams will appear here.</p></div>`;
+    return;
+  }
+  const groups = new Map();
+  S.unassigned.forEach(t => { if (!groups.has(t.group)) groups.set(t.group, []); groups.get(t.group).push(t); });
+  const order = [...groups.keys()].sort((a, b) => groups.get(b).length - groups.get(a).length);
+  const people = S.unassigned.reduce((a, t) => a + t.members.length, 0);
+  const tiers = ['all', 'Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'other'];
+  el.innerHTML = `<p class="small dash" style="margin:0 0 12px;max-width:72ch">${people} people on ${S.unassigned.length} teams aren't on anyone's staff roster, grouped by the Team Marketing Advisor in the directory. Use this to see who could be brought onto a roster in the re-org.</p>
+    <div class="tools" style="padding-top:0">
+      <input class="search" id="uq" type="search" placeholder="Search teams, offices or agents" value="${esc(un.q)}" aria-label="Search teams not on a roster">
+      <div class="seg" id="utier" role="group" aria-label="Filter by tier">${tiers.map(t => `<button aria-pressed="${un.tier === t}" data-tier="${t}">${t === 'all' ? 'All tiers' : t === 'other' ? 'No tier' : t}</button>`).join('')}</div>
+    </div>
+    <div id="ulist"></div>`;
+  const list = el.querySelector('#ulist');
+  const match = t => {
+    if (un.tier === 'other' ? /^Tier \d/.test(t.tier) : un.tier !== 'all' && !t.tier.split(' / ').includes(un.tier)) return false;
+    if (!un.q) return true;
+    return (t.name + ' ' + t.office + ' ' + t.members.map(m => m[0]).join(' ')).toLowerCase().includes(un.q);
+  };
+  const draw = () => {
+    const html = order.map(g => {
+      const ts = groups.get(g).filter(match);
+      if (!ts.length) return '';
+      const n = ts.reduce((a, t) => a + t.members.length, 0);
+      const tc = {}; ts.forEach(t => tc[t.tier] = (tc[t.tier] || 0) + 1);
+      const shown = un.q || un.groups.has(g);
+      return `<section class="flaggroup"><button class="grouphead" data-g="${esc(g)}" aria-expanded="${!!shown}"><h3>${esc(g)}<span class="num">${ts.length} teams · ${n} people</span></h3><span class="chev" aria-hidden="true"></span></button>
+        <div class="legend" style="padding:0">${TIERS.map(([k]) => tc[k] ? `<span>${k}: <b class="num">${tc[k]}</b></span>` : '').join('')}${tierMix(tc, ts.length)}</div>
+        ${!shown ? '' : ts.map(t => { const open = un.open.has(t.id); return `<div class="trow ${open ? 'open' : ''}">
+          <button class="fitem" data-u="${t.id}" aria-expanded="${open}" style="border:0">
+            <span><span class="t">${esc(t.name)}</span> <span class="tier ${tierCls(t.tier)}">${esc(t.tier)}</span></span>
+            <span class="m">${esc(t.office || 'Office not listed')} · ${t.members.length} ${t.members.length === 1 ? 'person' : 'people'}${t.principals.length ? ' · Principal: ' + esc(t.principals.join(', ')) : ''}</span></button>
+          ${open ? `<div class="answers" style="gap:6px">${t.members.map(m => `<div class="note"><b>${esc(m[0])}</b> <span class="by">${esc(m[1])}${m[2] ? ' · ' + esc(m[2]) : ''}</span></div>`).join('')}</div>` : ''}
+        </div>`; }).join('')}</section>`;
+    }).join('');
+    list.innerHTML = html || '<div class="empty">No teams match. Clear the search or pick another tier.</div>';
+    list.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g = b.dataset.g; un.groups.has(g) ? un.groups.delete(g) : un.groups.add(g); draw(); });
+    list.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { const id = b.dataset.u; un.open.has(id) ? un.open.delete(id) : un.open.add(id); draw(); });
+  };
+  el.querySelector('#uq').oninput = e => { un.q = e.target.value.toLowerCase(); draw(); };
+  el.querySelectorAll('[data-tier]').forEach(b => b.onclick = () => { un.tier = b.dataset.tier; el.querySelectorAll('[data-tier]').forEach(x => x.setAttribute('aria-pressed', x === b)); draw(); });
+  draw();
 }

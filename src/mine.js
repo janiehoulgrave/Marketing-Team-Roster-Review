@@ -107,6 +107,8 @@ function bodyHTML(t) {
     <div class="q">${lab('plan', 'plan-' + t.id)}${slider('plan', r, t.id)}</div>
     <div class="q">${lab('channels')}${multi('channels', r, Q.channels.opts)}</div>
     <div class="q">${lab('design')}${single('design', r)}<label class="check" for="brand-${t.id}"><input type="checkbox" id="brand-${t.id}" data-check="brand" ${r.brand ? 'checked' : ''}> They have a brand system</label></div>
+    <div class="q">${lab('ops')}${single('ops', r)}<div class="q sub" id="opsname-${t.id}" ${r.ops === 'Yes' ? '' : 'hidden'}><label class="ql" for="opsName-${t.id}">${Q.opsName.label}</label><input type="text" class="textin" id="opsName-${t.id}" data-text="opsName" value="${esc(r.opsName)}" placeholder="Name"></div></div>
+    <div class="q">${lab('specialty', 'specialty-' + t.id)}<textarea id="specialty-${t.id}" data-text="specialty" rows="2" placeholder="e.g. Capitol Hill condos, first-time buyers, luxury waterfront">${esc(r.specialty)}</textarea></div>
     <div class="q">${lab('projects', 'projects-' + t.id)}<textarea id="projects-${t.id}" data-text="projects" rows="3" placeholder="e.g. Spring listing launch, new team logo, quarterly market report mailer">${esc(r.projects)}</textarea></div>
     <div class="q">${lab('links')}<div class="links" id="links-${t.id}">${links.map((l, i) => linkRow(t.id, l, i)).join('')}</div><div><button type="button" class="btn link" data-addlink>+ Add another link</button></div></div>
     <div class="q">${lab('note', 'note-' + t.id)}<textarea id="note-${t.id}" data-text="note" rows="2">${esc(r.note)}</textarea></div>
@@ -150,6 +152,7 @@ function wire(t) {
     if (on) b.setAttribute('aria-pressed', 'true');
     r()[k] = on ? b.dataset.v : null;
     if (k === 'freq') card.querySelector('#never-' + t.id).hidden = r().freq !== NEVER;
+    if (k === 'ops') card.querySelector('#opsname-' + t.id).hidden = r().ops !== 'Yes';
     touch();
   }));
   card.querySelectorAll('[data-multi]').forEach(g => g.querySelectorAll('.opt').forEach(b => b.onclick = () => {

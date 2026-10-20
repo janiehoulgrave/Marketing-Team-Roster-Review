@@ -13,7 +13,7 @@ export const S = {
 };
 let unsubs = [];
 export const pending = new Set();
-export function setRoster(teams, meta) { S.roster = teams; S.rosterMeta = meta; }
+export function setRoster(teams, meta, unassigned) { S.roster = teams; S.rosterMeta = meta; S.unassigned = unassigned; }
 
 export function render() {
   document.body.classList.toggle('wide', S.tab === 'admin');
@@ -89,6 +89,7 @@ data.onUser(async user => {
   try {
     const r = await data.getRoster();
     S.roster = r?.teams || [];
+    S.unassigned = r ? r.unassigned : null;
     S.rosterMeta = r ? { fileName: r.fileName, importedAt: r.importedAt, importedBy: r.importedBy } : null;
   } catch (e) { S.error = 'The roster could not be loaded. ' + e.message; }
   const fail = e => { S.error = 'Answers could not be loaded. ' + e.message; render(); };
