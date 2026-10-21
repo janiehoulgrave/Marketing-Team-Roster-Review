@@ -1,6 +1,6 @@
 // Data layer. Uses Firebase when firebaseConfig is filled in; otherwise a demo mode that saves in this browser.
 import { firebaseConfig } from './firebaseConfig.js';
-import { STAFF, ADMINS } from './config.js';
+import { STAFF, ADMINS, DELEGATES } from './config.js';
 
 export const DEMO = !firebaseConfig.apiKey || firebaseConfig.apiKey === 'PASTE_HERE';
 
@@ -64,8 +64,10 @@ const lower = o => Object.fromEntries(Object.entries(o).map(([n, e]) => [e.toLow
 const STAFF_BY_EMAIL = lower(STAFF), ADMIN_BY_EMAIL = lower(ADMINS);
 export function access(user) {
   if (!user) return null;
-  const staff = STAFF_BY_EMAIL[user.email] || null;
+  const own = STAFF_BY_EMAIL[user.email] || null;
   const admin = ADMIN_BY_EMAIL[user.email] || null;
-  return { staff, admin: !!admin, name: staff || admin || user.name };
+  const standIn = !own && DELEGATES[user.email] ? DELEGATES[user.email] : null;
+  // staff = whose roster this person reviews; name = who they are.
+  return { staff: own || standIn, standIn, admin: !!admin, name: own || admin || user.name };
 }
 export const DEMO_PEOPLE = [...new Set([...Object.values(STAFF), ...Object.values(ADMINS)])];

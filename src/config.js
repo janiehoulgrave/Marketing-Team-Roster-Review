@@ -14,6 +14,12 @@ export const STAFF = {
   'Toria Hester': 'toria.hester@compass.com',
 };
 
+// STAND-INS: someone completing another person's roster review (for example during leave).
+// Their answers are saved as that person's review. Add the stand-in's email to isStaff() in firestore.rules too.
+export const DELEGATES = {
+  'sarah.tareen@compass.com': 'Lindsey McNerney',
+};
+
 export const ADMINS = {
   'Janie Houlgrave': 'janie.houlgrave@compass.com',
   'Ariel Mantilla': 'ariel.mantilla@compass.com',

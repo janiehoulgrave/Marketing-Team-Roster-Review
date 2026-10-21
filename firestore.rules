@@ -25,7 +25,8 @@ service cloud.firestore {
         'lindsey.mcnerney@compass.com',
         'natalie.robinson@compass.com',
         'skylar.herrle@compass.com',
-        'toria.hester@compass.com'
+        'toria.hester@compass.com',
+        'sarah.tareen@compass.com'
       ];
     }
 

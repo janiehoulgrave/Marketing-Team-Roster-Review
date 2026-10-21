@@ -1,7 +1,7 @@
 // Admin: read-only overview of every review, flags, and roster data upload.
 import { S, render, setRoster } from './main.js';
 import { data } from './data.js';
-import { STAFF, ADMINS } from './config.js';
+import { STAFF, ADMINS, DELEGATES } from './config.js';
 import { rosterFor } from './mine.js';
 import { Q, OFF, REACH_SHORT, isOff, status, STATUS_LABEL, esc, tierCls, safeUrl } from './questions.js';
 
@@ -11,6 +11,7 @@ export const adminTab = () => view.tab;
 export function resetAdmin() { view = { tab: 'staff', person: null, open: null }; upload = null; resetUnassigned(); }
 const NAMES = Object.keys(STAFF);
 const isPerson = n => !!STAFF[n];
+const standInFor = s => { const e = Object.keys(DELEGATES).find(k => DELEGATES[k] === s); return e ? (Object.entries(ADMINS).find(([, v]) => v === e)?.[0] || e) : null; };
 
 const FLAGS = {
   heavyTpl: { label: 'Heavy and templated', cls: '', desc: 'Heavy workload made up mostly of templated content. These are the clearest candidates for self-serve tools or a reassignment.' },
@@ -102,7 +103,7 @@ function staffTable(M) {
   ${NAMES.map(s => { const x = M.ALL[s], n = x.ts.length, pct = n ? x.done / n * 100 : 0;
     const sec = x.ts.filter(t => t.role === 'secondary').length;
     return `<tr data-person="${esc(s)}" tabindex="0">
-      <td class="nm">${esc(s)}${ADMINS[s] ? ' <span class="eyebrow">admin</span>' : ''}<span class="sub">${n} teams${sec ? ` (${sec} as secondary)` : ''} · ${x.members} people</span></td>
+      <td class="nm">${esc(s)}${ADMINS[s] ? ' <span class="eyebrow">admin</span>' : ''}${standInFor(s) ? `<span class="sub" style="color:var(--accent)">Being completed by ${esc(standInFor(s))}</span>` : ''}<span class="sub">${n} teams${sec ? ` (${sec} as secondary)` : ''} · ${x.members} people</span></td>
       <td><div class="prog"><div class="bar"><span style="width:${pct}%"></span></div><span class="num">${x.done}/${n}</span></div>${n && x.done === n ? '<span class="pill s-done">Finished</span>' : x.done + x.prog === 0 ? '<span class="pill s-todo">Not started</span>' : ''}</td>
       <td>${tierMix(x.tiers, n)}</td>
       <td class="num">${x.heavy}${M.heavyLoad(s) ? ' <span class="flag w">Above average</span>' : ''}</td>

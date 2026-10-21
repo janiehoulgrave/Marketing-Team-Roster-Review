@@ -31,7 +31,10 @@ function renderTop() {
   const ts = mine(), done = ts.filter(t => status(R()[t.id]) === 'done').length;
   const sec = ts.filter(t => t.role === 'secondary').length;
   const hello = document.getElementById('hello'); if (!hello) return;
-  hello.textContent = ts.length
+  const me = S.acc.name.split(' ')[0];
+  hello.textContent = S.acc.standIn
+    ? `${me}, you're completing ${S.acc.standIn}'s review while she's out. She has ${ts.length} teams${sec ? `, including ${sec} as the secondary MA` : ''}. Your answers save as ${S.acc.standIn.split(' ')[0]}'s review.`
+    : ts.length
     ? `${S.acc.staff.split(' ')[0]}, you have ${ts.length} teams to review${sec ? `, including ${sec} where you're the secondary MA` : ''}. Answer for how each team works with you today, then add notes on anyone below. Your answers save as you go.`
     : `${S.acc.staff.split(' ')[0]}, there are no teams assigned to you in the current roster.`;
   document.getElementById('progText').textContent = `${done} of ${ts.length} teams complete`;
