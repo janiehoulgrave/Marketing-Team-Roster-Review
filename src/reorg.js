@@ -145,7 +145,7 @@ export function renderReorg(el) {
   if (!S.reorgReady) { el.innerHTML = '<div class="empty">Loading the shared draft…</div>'; return; }
   if (!ctx.teams.length) { el.innerHTML = '<div class="empty">Upload the roster under Roster data first.</div>'; return; }
   el.innerHTML = `<div class="reorg">
-    <div class="syncbar"><span class="syncstate" id="syncstate"></span><div class="actions"><button class="btn" id="rcopy">Copy change list</button><button class="btn" id="rreset">Reset to current roster</button></div></div>
+    <div class="syncbar"><span class="syncstate" id="syncstate"></span><div class="actions"><button class="btn primary" id="rexport">Export revised roster</button><button class="btn" id="rcopy">Copy change list</button><button class="btn" id="rreset">Reset to current roster</button></div></div>
     <section class="glance" id="glance"></section>
     <details class="bench"><summary>Level benchmarks<span>Licensed agents per person by role. Changes here are shared with the other admins.</span></summary><div class="benchgrid" id="benchgrid"></div></details>
     <div class="layout">
@@ -168,6 +168,7 @@ export function renderReorg(el) {
   el.querySelector('#pq').oninput = e => { pool.q = e.target.value.toLowerCase(); renderPool(); };
   el.querySelector('#ptier').onchange = e => { pool.tier = e.target.value; renderPool(); };
   el.querySelector('#rcopy').onclick = copyList;
+  el.querySelector('#rexport').onclick = exportRoster;
   el.querySelector('#rreset').onclick = reset;
   el.querySelector('#scrim').addEventListener('click', e => { if (e.target.id === 'scrim') closeModal(); });
   wireGlobal();
@@ -266,6 +267,72 @@ function reset(e) {
   if (!resetArmed) { resetArmed = true; e.target.textContent = 'Press again to reset for everyone'; setTimeout(() => { resetArmed = false; if (e.target.isConnected) e.target.textContent = 'Reset to current roster'; }, 3000); return; }
   resetArmed = false; e.target.textContent = 'Reset to current roster';
   draft.assign = {}; draft.sec = {}; draft.order = []; save(); renderAll(); toast('Draft reset to the current roster.');
+}
+// ---- export: every person in the directory, their old and new marketing assignment, and review notes ----
+const REVIEW_LINES = r => r.freq === NEVER ? ["I've never spoken to them."] : [
+  ['How often they hear from them', r.freq], ['Workload', r.load], ['Kind of work', r.work != null ? WORK[r.work] : ''],
+  ['How they reach them', (r.reach || []).map(k => REACH[k]).join(', ')], ['Planning style', r.plan != null ? PLAN[r.plan] : ''],
+  ['Preferred channels', (r.channels || []).join(', ')], ['Design style', r.design], ['Has a brand system', r.brand ? 'Yes' : r.brand === false ? 'No' : ''],
+  ['Marketing admin / ops manager', r.ops ? r.ops + (r.ops === 'Yes' && r.opsName ? ': ' + r.opsName : '') : ''], ['Specialty', r.specialty],
+  ['Recent projects', (r.projects || '').replace(/\n+/g, '; ')], ['Go-to templates', (r.links || []).filter(Boolean).join(' ')], ['Additional notes', r.note],
+].filter(([, v]) => v && String(v).trim()).map(([k, v]) => `${k}: ${String(v).trim()}`);
+function reviewers(t) { const o = ctx.ORIGINAL[t.id]; return o ? [o].concat(t.sec && NAMES.includes(t.sec) && t.sec !== o ? [t.sec] : []) : []; }
+function teamNote(t) {
+  const rs = reviewers(t);
+  if (!rs.length) return '';
+  return rs.map(p => { const r = ctx.RESP[p]?.[t.id]; const head = `Team review from ${p}${p === ctx.ORIGINAL[t.id] ? '' : ' (second MA)'}:`;
+    return r ? [head, ...REVIEW_LINES(r)].join('\n') : `${head} no review yet.`; }).join('\n\n');
+}
+function personNote(t, name) {
+  return reviewers(t).map(p => { const n = ctx.RESP[p]?.[t.id]?.agentNotes?.[name]; return n && n.trim() ? `Note on ${name.split(' ')[0]} from ${p}: ${n.trim()}` : ''; }).filter(Boolean).join('\n');
+}
+async function exportRoster(e) {
+  const btn = e.target; btn.disabled = true; btn.textContent = 'Building file…';
+  try {
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = S.acc.name; wb.created = new Date();
+    const head = (ws, cols) => { ws.columns = cols; ws.getRow(1).font = { bold: true }; ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECEEF3' } }; ws.views = [{ state: 'frozen', ySplit: 1 }]; ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } }; };
+
+    const ws = wb.addWorksheet('Revised roster');
+    head(ws, [
+      { header: 'Name', key: 'name', width: 26 }, { header: 'Role', key: 'role', width: 14 }, { header: 'Agent tier', key: 'atier', width: 11 },
+      { header: 'Team', key: 'team', width: 30 }, { header: 'Team tier', key: 'ttier', width: 11 }, { header: 'Office', key: 'office', width: 18 },
+      { header: 'Current MA', key: 'curMA', width: 22 }, { header: 'New MA', key: 'newMA', width: 22 }, { header: 'MA changed', key: 'chg', width: 11 },
+      { header: 'Current second MA', key: 'curSec', width: 20 }, { header: 'New second MA', key: 'newSec', width: 20 },
+      { header: 'Notes', key: 'notes', width: 80 },
+    ]);
+    const sorted = ctx.ALL.slice().sort((a, b) => (owner(a.id) || a.group || '').localeCompare(owner(b.id) || b.group || '') || a.name.localeCompare(b.name));
+    sorted.forEach(t => {
+      const cur = ctx.ORIGINAL[t.id] || t.group || '', nw = owner(t.id) || (ctx.ORIGINAL[t.id] ? 'Not on a roster' : t.group || '');
+      const tn = teamNote(t);
+      t.members.forEach(m => {
+        const pn = personNote(t, m[0]);
+        const row = ws.addRow({ name: m[0], role: m[1], atier: m[2], team: t.name, ttier: tierShort(t.tier), office: t.office, curMA: cur, newMA: nw,
+          chg: cur !== nw ? 'Yes' : '', curSec: ctx.ORIG_SEC[t.id], newSec: secOf(t.id), notes: [tn, pn].filter(Boolean).join('\n\n') });
+        row.alignment = { vertical: 'top', wrapText: true };
+        if (cur !== nw) row.getCell('newMA').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6ECFC' } };
+        if (secOf(t.id) !== ctx.ORIG_SEC[t.id]) row.getCell('newSec').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6ECFC' } };
+      });
+    });
+
+    const sum = wb.addWorksheet('Staff summary');
+    head(sum, [{ header: 'Staff', key: 's', width: 22 }, { header: 'Role', key: 'r', width: 28 }, { header: 'Teams today', key: 't0', width: 12 }, { header: 'Teams proposed', key: 't1', width: 14 },
+      { header: 'Agents today', key: 'a0', width: 13 }, { header: 'Agents proposed', key: 'a1', width: 15 }, { header: 'Incl. as second MA', key: 'sa', width: 17 }, { header: 'Benchmark', key: 'b', width: 12 }, { header: 'Status', key: 'st', width: 12 }]);
+    NAMES.forEach(s => { const x = statsFor(s, owner), w = today(s), l = level(s); sum.addRow({ s, r: l.name, t0: w.teams, t1: x.teams, a0: w.agents, a1: x.agents, sa: x.secAgents || '', b: `${l.min}-${l.max}`, st: BENCH[benchStatus(x.agents, l)] }); });
+
+    const chs = wb.addWorksheet('Changes');
+    head(chs, [{ header: 'Team', key: 't', width: 32 }, { header: 'Change', key: 'c', width: 16 }, { header: 'From', key: 'f', width: 24 }, { header: 'To', key: 'to', width: 24 }, { header: 'Agents', key: 'a', width: 9 }]);
+    changedIds().forEach(id => { const t = ctx.BY_ID[id]; chs.addRow({ t: t.name, c: 'Primary MA', f: ctx.ORIGINAL[id] || t.group, to: owner(id) || 'Not on a roster', a: t.agents }); });
+    secChangedIds().forEach(id => { const t = ctx.BY_ID[id]; chs.addRow({ t: t.name, c: 'Second MA', f: ctx.ORIG_SEC[id] || 'none', to: secOf(id) || 'none', a: t.agents }); });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a'); a.href = url; a.download = `Revised Roster ${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast('Revised roster downloaded.');
+  } catch (err) { toast("Couldn't build the file. " + err.message); }
+  btn.disabled = false; btn.textContent = 'Export revised roster';
 }
 async function copyList() {
   const ids = changedIds(), sids = secChangedIds();
