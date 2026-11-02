@@ -1,7 +1,7 @@
 // "My roster": the review cards for the signed-in staff member.
 import { S, render, pending } from './main.js';
 import { data } from './data.js';
-import { Q, NEVER, status, STATUS_LABEL, esc, tierCls, pickAnswers } from './questions.js';
+import { Q, NEVER, status, STATUS_LABEL, esc, tierCls, pickAnswers, hexList } from './questions.js';
 import { STAFF } from './config.js';
 
 let filter = 'all', query = '', openId = null;
@@ -92,6 +92,7 @@ function slider(k, r, tid) {
     <input type="range" id="${k}-${tid}" min="0" max="4" step="1" value="${v}" aria-label="${esc(Q[k].label)}">
     <div class="ends"><span>${Q[k].ends[0]}</span><span>${Q[k].ends[1]}</span></div></div>`;
 }
+const swatches = s => hexList(s).map(h => `<span class="sw"><i style="background:${h}"></i>${h}</span>`).join('');
 const linkRow = (tid, l, i) => `<div class="linkrow"><input type="url" id="link-${tid}-${i}" value="${esc(l)}" placeholder="https://" aria-label="Template link ${i + 1}"><button type="button" class="x" aria-label="Remove link">×</button></div>`;
 const savedText = r => r?.updated ? 'Saved ' + new Date(r.updated).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Your answers save as you go.';
 
@@ -109,7 +110,11 @@ function bodyHTML(t) {
     <div class="q">${lab('reach')}${multi('reach', r, Q.reach.opts)}</div>
     <div class="q">${lab('plan', 'plan-' + t.id)}${slider('plan', r, t.id)}</div>
     <div class="q">${lab('channels')}${multi('channels', r, Q.channels.opts)}</div>
-    <div class="q">${lab('design')}${single('design', r)}<label class="check" for="brand-${t.id}"><input type="checkbox" id="brand-${t.id}" data-check="brand" ${r.brand ? 'checked' : ''}> They have a brand system</label></div>
+    <div class="q">${lab('design')}${single('design', r)}<label class="check" for="brand-${t.id}"><input type="checkbox" id="brand-${t.id}" data-check="brand" ${r.brand ? 'checked' : ''}> They have a brand system</label>
+      <label class="check" for="colorOk-${t.id}"><input type="checkbox" id="colorOk-${t.id}" data-check="colorOk" ${r.colorOk ? 'checked' : ''}> They have approval for custom colors</label>
+      <div class="q sub" id="colorsWrap-${t.id}" ${r.colorOk ? '' : 'hidden'}><label class="ql" for="colors-${t.id}">${Q.colors.label}<span class="hint">${Q.colors.hint}</span></label>
+        <input type="text" class="textin" id="colors-${t.id}" data-text="colors" value="${esc(r.colors)}" placeholder="#1A2B3C, #C9A227">
+        <div class="swatches" id="sw-${t.id}">${swatches(r.colors)}</div></div></div>
     <div class="q">${lab('ops')}${single('ops', r)}<div class="q sub" id="opsname-${t.id}" ${r.ops === 'Yes' ? '' : 'hidden'}><label class="ql" for="opsName-${t.id}">${Q.opsName.label}</label><input type="text" class="textin" id="opsName-${t.id}" data-text="opsName" value="${esc(r.opsName)}" placeholder="Name"></div></div>
     <div class="q">${lab('specialty', 'specialty-' + t.id)}<textarea id="specialty-${t.id}" data-text="specialty" rows="2" placeholder="e.g. Capitol Hill condos, first-time buyers, luxury waterfront">${esc(r.specialty)}</textarea></div>
     <div class="q">${lab('projects', 'projects-' + t.id)}<textarea id="projects-${t.id}" data-text="projects" rows="3" placeholder="e.g. Spring listing launch, new team logo, quarterly market report mailer">${esc(r.projects)}</textarea></div>
@@ -169,8 +174,13 @@ function wire(t) {
     inp.oninput = () => { s.classList.remove('unset'); s.querySelector('.read').textContent = Q[k].stops[+inp.value]; r()[k] = +inp.value; touch(); };
     inp.onpointerdown = () => { if (s.classList.contains('unset')) inp.oninput(); };
   });
-  card.querySelectorAll('[data-check]').forEach(c => c.onchange = () => { r()[c.dataset.check] = c.checked; touch(); });
+  card.querySelectorAll('[data-check]').forEach(c => c.onchange = () => {
+    r()[c.dataset.check] = c.checked;
+    if (c.dataset.check === 'colorOk') card.querySelector('#colorsWrap-' + t.id).hidden = !c.checked;
+    touch();
+  });
   card.querySelectorAll('[data-text]').forEach(a => a.oninput = () => { r()[a.dataset.text] = a.value; touch(); });
+  const ci = card.querySelector('#colors-' + t.id); if (ci) ci.addEventListener('input', () => { card.querySelector('#sw-' + t.id).innerHTML = swatches(ci.value); });
   card.querySelectorAll('[data-agent]').forEach(a => a.oninput = () => { (r().agentNotes = r().agentNotes || {})[a.dataset.agent] = a.value; touch(); });
   const linksEl = card.querySelector('#links-' + t.id);
   const syncLinks = () => { r().links = [...linksEl.querySelectorAll('input')].map(i => i.value.trim()); touch(); };

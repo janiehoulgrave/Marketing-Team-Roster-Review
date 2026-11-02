@@ -3,7 +3,7 @@ import { S, render, setRoster } from './main.js';
 import { data } from './data.js';
 import { STAFF, ADMINS, DELEGATES } from './config.js';
 import { rosterFor } from './mine.js';
-import { Q, OFF, REACH_SHORT, isOff, status, STATUS_LABEL, esc, tierCls, safeUrl } from './questions.js';
+import { Q, OFF, REACH_SHORT, isOff, status, STATUS_LABEL, esc, tierCls, safeUrl, hexList } from './questions.js';
 
 let view = { tab: 'staff', person: null, open: null };
 let upload = null; // parsed file waiting for confirmation
@@ -156,7 +156,7 @@ function dlist(r) {
   return `<dl>${row('freq', esc(r.freq))}${row('load', esc(r.load))}${row('work', r.work != null ? Q.work.stops[r.work] : '')}
     ${row('reach', (r.reach || []).map(k => esc(REACH_SHORT[k]) + (OFF.includes(k) ? ' <span class="flag w" style="font-size:10px;padding:0 5px">off-process</span>' : '')).join(', '))}
     ${row('plan', r.plan != null ? Q.plan.stops[r.plan] : '')}
-    ${row('channels', esc((r.channels || []).join(', ')))}${row('design', esc(r.design))}${row('brand', r.brand ? 'Yes' : r.brand === false ? 'No' : '')}
+    ${row('channels', esc((r.channels || []).join(', ')))}${row('design', esc(r.design))}${row('brand', r.brand ? 'Yes' : r.brand === false ? 'No' : '')}${row('colorOk', r.colorOk ? 'Yes' + (hexList(r.colors).length ? `<span class="swatches" style="margin-top:4px">${hexList(r.colors).map(h => `<span class="sw"><i style="background:${h}"></i>${h}</span>`).join('')}</span>` : (r.colors ? ': ' + esc(r.colors) : '')) : r.colorOk === false ? 'No' : '')}
     ${row('ops', r.ops ? esc(r.ops) + (r.ops === 'Yes' && r.opsName ? ': ' + esc(r.opsName) : '') : '')}${row('specialty', esc(r.specialty).replace(/\n/g, '<br>'))}
     ${row('projects', esc(r.projects).replace(/\n/g, '<br>'))}
     ${row('links', (r.links || []).filter(Boolean).map(l => safeUrl(l) ? `<a href="${esc(l)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l)).join('<br>'))}

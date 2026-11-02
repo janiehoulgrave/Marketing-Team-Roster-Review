@@ -5,7 +5,7 @@ import './reorg.css';
 import { S } from './main.js';
 import { data } from './data.js';
 import { STAFF, ROLES, STAFF_ROLE } from './config.js';
-import { NEVER, status, STATUS_LABEL as STATUS, esc, tierCls, safeUrl } from './questions.js';
+import { NEVER, status, STATUS_LABEL as STATUS, esc, tierCls, safeUrl, hexList } from './questions.js';
 
 const NAMES = Object.keys(STAFF);
 const TIERS = [['Tier 1', 't1'], ['Tier 2', 't2'], ['Tier 3', 't3'], ['Tier 4', 't4']];
@@ -272,7 +272,7 @@ function reset(e) {
 const REVIEW_LINES = r => r.freq === NEVER ? ["I've never spoken to them."] : [
   ['How often they hear from them', r.freq], ['Workload', r.load], ['Kind of work', r.work != null ? WORK[r.work] : ''],
   ['How they reach them', (r.reach || []).map(k => REACH[k]).join(', ')], ['Planning style', r.plan != null ? PLAN[r.plan] : ''],
-  ['Preferred channels', (r.channels || []).join(', ')], ['Design style', r.design], ['Has a brand system', r.brand ? 'Yes' : r.brand === false ? 'No' : ''],
+  ['Preferred channels', (r.channels || []).join(', ')], ['Design style', r.design], ['Has a brand system', r.brand ? 'Yes' : r.brand === false ? 'No' : ''], ['Approved for custom colors', r.colorOk ? 'Yes' + (hexList(r.colors).length ? ': ' + hexList(r.colors).join(', ') : r.colors ? ': ' + r.colors : '') : r.colorOk === false ? 'No' : ''],
   ['Marketing admin / ops manager', r.ops ? r.ops + (r.ops === 'Yes' && r.opsName ? ': ' + r.opsName : '') : ''], ['Specialty', r.specialty],
   ['Recent projects', (r.projects || '').replace(/\n+/g, '; ')], ['Go-to templates', (r.links || []).filter(Boolean).join(' ')], ['Additional notes', r.note],
 ].filter(([, v]) => v && String(v).trim()).map(([k, v]) => `${k}: ${String(v).trim()}`);
@@ -389,7 +389,7 @@ function answersList(r) {
   return `<dl>${row('How often they hear from them', esc(r.freq))}${row('Workload', esc(r.load))}${row('Kind of work', r.work != null ? WORK[r.work] : '')}
     ${row('How they reach them', (r.reach || []).map(k => esc(REACH[k]) + (k !== 'zendesk' ? ' <span class="flag w" style="font-size:10px;padding:0 5px">off-process</span>' : '')).join(', '))}
     ${row('Planning style', r.plan != null ? PLAN[r.plan] : '')}${row('Preferred channels', esc((r.channels || []).join(', ')))}
-    ${row('Design style', esc(r.design))}${row('Has a brand system', r.brand ? 'Yes' : r.brand === false ? 'No' : '')}
+    ${row('Design style', esc(r.design))}${row('Has a brand system', r.brand ? 'Yes' : r.brand === false ? 'No' : '')}${row('Approved for custom colors', r.colorOk ? 'Yes' + (hexList(r.colors).length ? `<span class="swatches" style="margin-top:4px">${hexList(r.colors).map(h => `<span class="sw"><i style="background:${h}"></i>${h}</span>`).join('')}</span>` : (r.colors ? ': ' + esc(r.colors) : '')) : r.colorOk === false ? 'No' : '')}
     ${row('Marketing admin / ops manager', r.ops ? esc(r.ops) + (r.ops === 'Yes' && r.opsName ? ': ' + esc(r.opsName) : '') : '')}${row('Specialty', esc(r.specialty).replace(/\n/g, '<br>'))}
     ${row('Recent projects', esc(r.projects).replace(/\n/g, '<br>'))}
     ${row('Go-to templates', (r.links || []).filter(Boolean).map(l => safeUrl(l) ? `<a href="${esc(l)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l)).join('<br>'))}

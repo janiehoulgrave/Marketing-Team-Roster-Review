@@ -9,6 +9,8 @@ export const Q = {
   channels:{ label: 'Which marketing channels do they prefer?', hint: 'Pick all that apply.', opts: ['Print', 'Social', 'Email', 'Video', 'Digital ads', 'Signage', 'Events', 'Other'] },
   design: { label: 'What is their design style?', opts: ['Modern', 'Traditional', 'Blend'] },
   brand:  { label: 'Has a brand system' },
+  colorOk:{ label: 'Approved for custom colors' },
+  colors: { label: 'Approved hex codes', hint: 'Separate with commas, e.g. #1A2B3C, #C9A227' },
   ops:    { label: 'Do they have a marketing admin or operations manager?', opts: ['Yes', 'No', 'Not sure'] },
   opsName:{ label: 'What is their name?' },
   specialty:{ label: 'What do they specialize in?', hint: 'Niche markets, neighborhoods, types of clients.' },
@@ -25,14 +27,16 @@ export function status(r) {
   if (r.freq === NEVER) return 'done';
   const req = [r.freq, r.load, r.work != null ? 1 : null, (r.reach || []).length ? 1 : null, r.plan != null ? 1 : null, (r.channels || []).length ? 1 : null, r.design];
   const filled = req.filter(Boolean).length;
-  const any = filled || r.projects || r.note || r.ops || r.specialty || (r.links || []).some(Boolean) || Object.values(r.agentNotes || {}).some(Boolean);
+  const any = filled || r.projects || r.note || r.ops || r.specialty || r.colorOk || r.colors || (r.links || []).some(Boolean) || Object.values(r.agentNotes || {}).some(Boolean);
   if (filled === req.length) return 'done';
   return any ? 'prog' : 'todo';
 }
 export const STATUS_LABEL = { todo: 'Not started', prog: 'In progress', done: 'Complete' };
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const tierCls = t => /^Tier \d/.test(t) ? '' : 't0';
+// Pulls valid hex codes (#abc or #aabbcc) out of whatever was typed.
+export const hexList = s => (String(s || '').match(/#?\b[0-9a-f]{6}\b|#?\b[0-9a-f]{3}\b/gi) || []).map(h => '#' + h.replace('#', '').toUpperCase());
 export const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
 // Only the answer fields get saved, so nothing else can sneak into a review.
-export const ANSWER_KEYS = ['freq', 'load', 'work', 'reach', 'plan', 'channels', 'design', 'brand', 'ops', 'opsName', 'specialty', 'projects', 'links', 'note', 'agentNotes'];
+export const ANSWER_KEYS = ['freq', 'load', 'work', 'reach', 'plan', 'channels', 'design', 'brand', 'colorOk', 'colors', 'ops', 'opsName', 'specialty', 'projects', 'links', 'note', 'agentNotes'];
 export const pickAnswers = r => Object.fromEntries(ANSWER_KEYS.filter(k => r[k] !== undefined).map(k => [k, r[k]]));
