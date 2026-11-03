@@ -17,7 +17,7 @@ service cloud.firestore {
     function isStaff() {
       return signedIn() && email() in [
         'alex.asmar@compass.com',
-        'alexis.coballes@compass.com',
+        'alexisloren.coballes@compass.com',
         'ariel.mantilla@compass.com',
         'janie.houlgrave@compass.com',
         'jessica.tan@compass.com',

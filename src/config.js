@@ -3,7 +3,7 @@
 // If you change anyone here, make the same change in firestore.rules (two lists at the top).
 export const STAFF = {
   'Alex Asmar': 'alex.asmar@compass.com',
-  'Alexis Coballes': 'alexis.coballes@compass.com',
+  'Alexis Coballes': 'alexisloren.coballes@compass.com',
   'Ariel Mantilla': 'ariel.mantilla@compass.com',
   'Janie Houlgrave': 'janie.houlgrave@compass.com',
   'Jessica Tan': 'jessica.tan@compass.com',
