@@ -266,3 +266,9 @@ dd a { color: var(--accent); }
 .swatches:empty { display: none; }
 .sw { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-variant-numeric: tabular-nums; background: var(--sunk); border-radius: 6px; padding: 3px 8px 3px 4px; }
 .sw i { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--line); }
+
+/* After "I've never spoken to them", the rest of the card is optional: greyed out but still usable. */
+.rest { display: grid; gap: 4px; transition: opacity .15s; }
+.rest.dim { opacity: .45; }
+.rest.dim:hover, .rest.dim:focus-within { opacity: .85; }
+.rest.dim .q .ql::after { content: 'Optional'; margin-left: 8px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }

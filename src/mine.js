@@ -104,7 +104,8 @@ function bodyHTML(t) {
     ? `<div class="banner2">You're the secondary MA here. ${esc(t.ma)} reviews this team too, and managers see both reviews side by side.</div>`
     : t.sec && isPerson(t.sec) ? `<div class="banner2">${esc(t.sec)} is the secondary MA and reviews this team too. Managers see both reviews side by side.</div>` : '';
   return `${banner}<div class="body">
-    <div class="q">${lab('freq')}${single('freq', r)}<div class="never" id="never-${t.id}" ${r.freq === NEVER ? '' : 'hidden'}>That marks this team complete. Fill in anything else you know, or add notes on team members below.</div></div>
+    <div class="q">${lab('freq')}${single('freq', r)}<div class="never" id="never-${t.id}" ${r.freq === NEVER ? '' : 'hidden'}>That marks this team complete. Everything below is optional now, so fill in only what you know.</div></div>
+    <div class="rest ${r.freq === NEVER ? 'dim' : ''}" id="rest-${t.id}">
     <div class="q">${lab('load')}${single('load', r)}</div>
     <div class="q">${lab('work', 'work-' + t.id)}${slider('work', r, t.id)}</div>
     <div class="q">${lab('reach')}${multi('reach', r, Q.reach.opts)}</div>
@@ -125,6 +126,7 @@ function bodyHTML(t) {
       ${t.members.map((m, i) => `<div class="mem"><div class="mem-top"><span class="nm">${esc(m[0])}</span><span class="role">${esc(m[1])}</span>${m[2] ? `<span class="tier ${tierCls(m[2])}">${esc(m[2])}</span>` : ''}</div>
         <textarea id="an-${t.id}-${i}" data-agent="${esc(m[0])}" rows="1" placeholder="Add a note about ${esc(m[0].split(' ')[0])}" aria-label="Note about ${esc(m[0])}">${esc(notes[m[0]])}</textarea></div>`).join('')}
     </section>
+    </div>
     <div class="foot"><span id="saved-${t.id}">${savedText(R()[t.id])}</span><button type="button" class="btn primary" data-close>Done with this team</button></div>
   </div>`;
 }
@@ -159,7 +161,7 @@ function wire(t) {
     g.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-pressed', 'false'));
     if (on) b.setAttribute('aria-pressed', 'true');
     r()[k] = on ? b.dataset.v : null;
-    if (k === 'freq') card.querySelector('#never-' + t.id).hidden = r().freq !== NEVER;
+    if (k === 'freq') { const nv = r().freq === NEVER; card.querySelector('#never-' + t.id).hidden = !nv; card.querySelector('#rest-' + t.id).classList.toggle('dim', nv); }
     if (k === 'ops') card.querySelector('#opsname-' + t.id).hidden = r().ops !== 'Yes';
     touch();
   }));
