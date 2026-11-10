@@ -2,7 +2,7 @@
 // Names must match the "Team Marketing Advisor" column in the DMV Agent Directory exactly.
 // If you change anyone here, make the same change in firestore.rules (two lists at the top).
 export const STAFF = {
-  'Alex Asmar': 'alex.asmar@compass.com',
+  'Alex Asmar': 'alexandra.zimmerman@compass.com',
   'Alexis Coballes': 'alexisloren.coballes@compass.com',
   'Ariel Mantilla': 'ariel.mantilla@compass.com',
   'Janie Houlgrave': 'janie.houlgrave@compass.com',
